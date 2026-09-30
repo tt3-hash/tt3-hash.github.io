@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Average Odds Tracker</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@500;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#f3efe6;--card:#fffdf8;--ink:#1b2320;--mute:#6d756f;--line:#ddd6c6;--acc:#0f5c45;--good:#0f7a4f;--bad:#b3362b;--chip:#e8e2d2;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#121816;--card:#1b2320;--ink:#ece8dc;--mute:#94a09a;--line:#2d3832;--acc:#5fd3a2;--good:#5fd3a2;--bad:#ff8a7a;--chip:#26312c}}
+:root[data-theme="dark"]{--bg:#121816;--card:#1b2320;--ink:#ece8dc;--mute:#94a09a;--line:#2d3832;--acc:#5fd3a2;--good:#5fd3a2;--bad:#ff8a7a;--chip:#26312c}
+*{box-sizing:border-box}html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.4 "Bricolage Grotesque",system-ui,sans-serif}
+.m{font-family:"JetBrains Mono",ui-monospace,Menlo,monospace}
+.wrap{max-width:1080px;margin:0 auto;padding:20px 16px 48px}
+header{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between;margin-bottom:14px}
+h1{font-size:24px;margin:0;letter-spacing:-.02em}
+.tabs{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:16px}
+.tab{border:1px solid var(--line);background:var(--chip);color:var(--ink);padding:6px 12px;border-radius:999px;cursor:pointer;font:inherit}
+.tab.on{background:var(--acc);color:var(--bg);border-color:var(--acc)}
+button,input{font:inherit;color:var(--ink)}
+.btn{border:1px solid var(--line);background:var(--card);padding:6px 12px;border-radius:8px;cursor:pointer}
+.btn:hover{border-color:var(--acc)}
+.grid{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:16px}
+@media(max-width:860px){.grid{grid-template-columns:1fr}}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px}
+.card h2{font-size:12px;text-transform:uppercase;letter-spacing:.09em;color:var(--mute);margin:0 0 12px;font-weight:700}
+.kpis{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+.k{border:1px solid var(--line);border-radius:10px;padding:10px 12px}
+.k.hero{grid-column:1/-1;background:var(--acc);color:var(--bg);border-color:var(--acc)}
+.k label{display:block;font-size:12px;color:var(--mute)}.k.hero label{color:inherit;opacity:.8}
+.k b{font-size:22px;font-weight:600}.k small{display:block;color:var(--mute);font-size:12px}
+.pos{color:var(--good)}.neg{color:var(--bad)}.hero .pos,.hero .neg{color:inherit}
+.edge{display:flex;align-items:center;gap:8px;margin-bottom:14px}
+.edge input{width:84px}
+input[type=text],input[type=number]{background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:7px 9px;width:100%}
+input:focus{outline:2px solid var(--acc);outline-offset:1px}
+.tw{overflow-x:auto}
+table{width:100%;border-collapse:collapse;min-width:440px}
+th{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--mute);text-align:left;padding:4px 6px;font-weight:700}
+td{padding:4px 6px;border-top:1px solid var(--line)}
+td.c{color:var(--mute);font-size:13px;white-space:nowrap}
+.win{border:1px solid var(--line);background:var(--chip);border-radius:8px;padding:6px 10px;cursor:pointer;width:64px}
+.win.w{background:var(--good);color:var(--bg);border-color:var(--good)}
+.x{background:none;border:0;color:var(--mute);cursor:pointer;font-size:18px}
+.bar{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.note{color:var(--mute);font-size:12px;margin-top:12px}
+.empty{color:var(--mute);padding:20px 0;text-align:center}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header><h1>Average Odds Tracker</h1><span class="note" style="margin:0">Your bankrolls are saved privately in this browser.</span></header>
+  <div class="tabs" id="tabs"></div>
+  <div class="grid">
+    <section class="card">
+      <h2>Bets</h2>
+      <div class="tw"><table><thead><tr><th>Stake ($)</th><th>American odds</th><th>Result</th><th>Decimal</th><th>Implied</th><th></th></tr></thead><tbody id="rows"></tbody></table></div>
+      <div class="bar">
+        <button class="btn" id="add">+ Add bet</button>
+        <button class="btn" id="imp">Import CSV</button>
+        <button class="btn" id="exp">Export CSV</button>
+        <button class="btn" id="clr">Clear bets</button>
+        <input type="file" id="file" accept=".csv,text/csv" hidden>
+      </div>
+      <div class="note">CSV columns: stake, odds (American), win (true/false). Only rows with a stake and valid odds are counted.</div>
+    </section>
+    <section>
+      <div class="card" style="margin-bottom:16px">
+        <h2>Your betting profile</h2>
+        <div class="edge"><label for="edge">Book edge (%)</label><input type="number" id="edge" step="0.1" min="0" class="m"></div>
+        <div class="kpis" id="kpis"></div>
+      </div>
+    </section>
+  </div>
+</div>
+<script>
+(function(){
+var KEY="avgOddsTracker.v1",mem=null;
+function load(){try{var s=localStorage.getItem(KEY);if(s)return JSON.parse(s)}catch(e){}return mem}
+function save(){mem=S;try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
+var S=load()||{edge:4.5,cur:0,books:[{name:"Bankroll 1",bets:[{s:"",o:"",w:false}]}]};
+var $=function(i){return document.getElementById(i)};
+function bk(){return S.books[S.cur]}
+function dec(a){a=parseFloat(a);if(!isFinite(a)||a===0||Math.abs(a)<100)return null;return a>0?a/100+1:100/Math.abs(a)+1}
+function us(d){return d>=2?"+"+Math.round((d-1)*100):"-"+Math.round(100/(d-1))}
+function pct(x,d){return (x*100).toFixed(d==null?1:d)+"%"}
+function usd(x){return (x<0?"-":"")+"$"+Math.abs(x).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}
+function sg(x){return x>0?"pos":x<0?"neg":""}
+function esc(s){return String(s).replace(/[&<>"]/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]})}
+
+function tabs(){var h="";S.books.forEach(function(b,i){h+='<button class="tab'+(i===S.cur?' on':'')+'" data-i="'+i+'">'+esc(b.name)+'</button>'});
+ h+='<button class="btn" id="nb">+ New bankroll</button><button class="btn" id="rn">Rename</button>'+(S.books.length>1?'<button class="btn" id="db">Delete</button>':'');
+ $("tabs").innerHTML=h}
+
+function rows(){var b=bk(),h="";
+ b.bets.forEach(function(x,i){var d=dec(x.o);
+  h+='<tr data-i="'+i+'"><td><input type="number" class="m" data-f="s" value="'+esc(x.s)+'" min="0" step="any" inputmode="decimal" placeholder="25"></td>'+
+  '<td><input type="text" class="m" data-f="o" value="'+esc(x.o)+'" inputmode="text" placeholder="-110"></td>'+
+  '<td><button class="win'+(x.w?' w':'')+'" data-t="1">'+(x.w?'Win':'Loss')+'</button></td>'+
+  '<td class="c m" data-d>'+(d?d.toFixed(2):'')+'</td><td class="c m" data-p>'+(d?pct(1/d):'')+'</td><td><button class="x" data-x="1" aria-label="Delete bet">×</button></td></tr>'});
+ $("rows").innerHTML=h}
+
+function calc(){var b=bk(),edge=(parseFloat(S.edge)||0)/100,n=0,ss=0,sd=0,wins=0,ret=0,rsum=0;
+ b.bets.forEach(function(x){var s=parseFloat(x.s),d=dec(x.o);if(!(s>0)||!d)return;n++;ss+=s;sd+=d;if(x.w){wins++;rsum+=d;ret+=s*d}});
+ var k=$("kpis");if(!n){k.innerHTML='<div class="empty" style="grid-column:1/-1">Enter a stake and odds to see your numbers.</div>';return}
+ var ad=sd/n,be=1/ad+edge,wr=wins/n,xr=wr*ad-1,ar=rsum/n-1,pl=ret-ss;
+ function c(l,v,sub,cls,hero){return '<div class="k'+(hero?' hero':'')+'"><label>'+l+'</label><b class="m '+(cls||'')+'">'+v+'</b>'+(sub?'<small>'+sub+'</small>':'')+'</div>'}
+ k.innerHTML=
+  c("Required win % (breakeven)",pct(be),"Avg-odds implied "+pct(1/ad)+" + "+pct(edge)+" book edge","",1)+
+  c("Average odds",us(ad),ad.toFixed(3)+" decimal")+
+  c("Average stake",usd(ss/n),n+" bet"+(n>1?"s":""))+
+  c("Total staked",usd(ss))+
+  c("Actual win %",pct(wr),wins+" of "+n)+
+  c("Win % vs. required",(wr-be>0?"+":"")+pct(wr-be),wr>=be?"Above breakeven":"Below breakeven",sg(wr-be))+
+  c("Expected return",(xr>0?"+":"")+pct(xr),"Win % × avg odds − 1",sg(xr))+
+  c("Actual return",(ar>0?"+":"")+pct(ar),"Per-bet, unit basis",sg(ar))+
+  c("Actual − expected",(ar-xr>0?"+":"")+pct(ar-xr),"",sg(ar-xr))+
+  c("Profit / loss",usd(pl),"ROI "+(pl/ss>0?"+":"")+pct(pl/ss)+" of total staked",sg(pl))}
+
+function upd(){save();calc()}
+function all(){tabs();rows();$("edge").value=S.edge;calc()}
+
+$("tabs").addEventListener("click",function(e){var t=e.target;
+ if(t.dataset.i!=null){S.cur=+t.dataset.i;save();all()}
+ else if(t.id==="nb"){var n=prompt("Bankroll name","Bankroll "+(S.books.length+1));if(n){S.books.push({name:n,bets:[{s:"",o:"",w:false}]});S.cur=S.books.length-1;save();all()}}
+ else if(t.id==="rn"){var r=prompt("Rename bankroll",bk().name);if(r){bk().name=r;save();tabs()}}
+ else if(t.id==="db"){if(confirm('Delete "'+bk().name+'" and all its bets?')){S.books.splice(S.cur,1);S.cur=0;save();all()}}});
+$("edge").addEventListener("input",function(e){S.edge=e.target.value;upd()});
+$("rows").addEventListener("input",function(e){var tr=e.target.closest("tr"),f=e.target.dataset.f;if(!tr||!f)return;
+ var x=bk().bets[+tr.dataset.i];x[f]=e.target.value;var d=dec(x.o);tr.querySelector("[data-d]").textContent=d?d.toFixed(2):"";tr.querySelector("[data-p]").textContent=d?pct(1/d):"";upd()});
+$("rows").addEventListener("click",function(e){var tr=e.target.closest("tr");if(!tr)return;var i=+tr.dataset.i,b=bk();
+ if(e.target.dataset.t){b.bets[i].w=!b.bets[i].w;rows();upd()}
+ else if(e.target.dataset.x){b.bets.splice(i,1);if(!b.bets.length)b.bets.push({s:"",o:"",w:false});rows();upd()}});
+$("rows").addEventListener("keydown",function(e){if(e.key==="Enter"&&e.target.dataset.f==="o"){var tr=e.target.closest("tr");if(!tr.nextElementSibling)add()}});
+function add(){bk().bets.push({s:"",o:"",w:false});rows();save();var r=$("rows").lastElementChild;if(r)r.querySelector("input").focus()}
+$("add").onclick=add;
+$("clr").onclick=function(){if(confirm("Clear all bets in this bankroll?")){bk().bets=[{s:"",o:"",w:false}];rows();upd()}};
+$("imp").onclick=function(){$("file").click()};
+$("file").onchange=function(e){var f=e.target.files[0];if(!f)return;var r=new FileReader();r.onload=function(){
+ var out=[];String(r.result).split(/\r?\n/).forEach(function(l){var p=l.split(",").map(function(v){return v.trim().replace(/^"|"$/g,"")});
+  var s=parseFloat(p[0]),o=parseFloat(p[1]);if(!(s>0)||!dec(o))return;out.push({s:String(s),o:String(o),w:/^(true|win|w|1|yes)$/i.test(p[2]||"")})});
+ if(!out.length){alert("No valid rows found. Expected: stake, American odds, win (true/false).");return}
+ var b=bk();b.bets=b.bets.filter(function(x){return x.s!==""||x.o!==""}).concat(out);rows();upd()};r.readAsText(f);e.target.value=""};
+$("exp").onclick=function(){var b=bk(),t="stake,american_odds,win\n";b.bets.forEach(function(x){if(x.s!==""&&x.o!=="")t+=x.s+","+x.o+","+(x.w?"true":"false")+"\n"});
+ var name=b.name.replace(/[^\w-]+/g,"_")+".csv";
+ (window.claude?claude.use("downloads"):Promise.resolve(null)).then(function(d){
+  if(d){return d.save({filename:name,data:t})}
+  var a=document.createElement("a");a.href="data:text/csv;charset=utf-8,"+encodeURIComponent(t);a.download=name;document.body.appendChild(a);a.click();a.remove()}).catch(function(){})};
+all();
+})();
+</script>
+</body>
+</html>
